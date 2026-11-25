@@ -27,6 +27,7 @@ De no preferir el .exe o hacerlo desde el móvil puedes solo descargarte el .zip
 
 
 ##Nuevas versiones se publicaran acá mientras se solventa lo de actualización vía OTA##
+
 *Versión Inicial 25-11-2026*
 *Edicion Manguangua, ya que esta version es modificada por modders venezolanos*
 ---
