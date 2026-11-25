@@ -9,6 +9,8 @@ Port no oficial de **XuperTV** adaptado y optimizado para dispositivos **Roku** 
 * Interfaz adaptada a la navegación con control remoto Roku.
 * Soporte para resoluciones HD y Full HD.
 * Optimizado para un rendimiento fluido en dispositivos Roku compatibles.
+* Esta versión incluye mejoras en la interfaz y fluidez
+* Filtro de peliculas y series con el boton asterisco (*) para filtrar contenido H264 (Rokus viejos) Y H265 (Rokus Nuevos)
 
 ## ✅ Dispositivos probados y testeados
 Esta versión ha sido probada y verificada con éxito en los siguientes modelos:
