@@ -25,6 +25,10 @@ Esta versión ha sido probada y verificada con éxito en los siguientes modelos:
 Si lo prefieres puedes ejecutar el .exe en tu ordenador, pc Laptop, para mejor eficiencia y rapidez, el mismo .exe te dará un paso guiado de como realizar la instalación, automáticamente busca tu equipo en la red y se conecta con la contraseña que tu mismo pusiste.
 De no preferir el .exe o hacerlo desde el móvil puedes solo descargarte el .zip conectandote por el navegador en la IP correspondiente y subiendo el archivo.
 
+
+##Nuevas versiones se publicaran acá mientras se solventa lo de actualización vía OTA##
+*Versión Inicial 25-11-2026*
+*Edicion Manguangua, ya que esta version es modificada por modders venezolanos*
 ---
 
 ## ⚠️ Aviso Legal y Descargo de Responsabilidad
