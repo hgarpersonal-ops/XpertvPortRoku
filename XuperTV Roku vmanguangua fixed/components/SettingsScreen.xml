@@ -11,66 +11,66 @@
   <children>
     <Rectangle width="1920" height="1080" color="0x050914FF" />
     <Rectangle width="6" height="44" translation="[170,68]" color="0x0EA5E9FF" />
-    <Label text="Ajustes  &#x00B7;  XuperTV" translation="[190,64]" color="0xF8FAFCFF">
-      <Font role="font" uri="font:BoldSystemFontFile" size="40" />
+    <Label text="Ajustes  &#x00B7;  XuperTV" translation="[190,60]" color="0xF8FAFCFF">
+      <Font role="font" uri="font:BoldSystemFontFile" size="42" />
     </Label>
-    <Label text="INFORMACI&#x00D3;N DEL DISPOSITIVO" translation="[190,140]" color="0x56CCF2FF">
-      <Font role="font" uri="font:BoldSystemFontFile" size="18" />
+    <Label text="INFORMACI&#x00D3;N DEL DISPOSITIVO" translation="[190,136]" color="0x56CCF2FF">
+      <Font role="font" uri="font:BoldSystemFontFile" size="21" />
     </Label>
-    <Label id="deviceInfo" translation="[190,178]" width="1540" height="60" color="0xF8FAFCFF" wrap="true">
-      <Font role="font" uri="font:SystemFontFile" size="22" />
+    <Label id="deviceInfo" translation="[190,174]" width="1540" height="60" color="0xF8FAFCFF" wrap="true">
+      <Font role="font" uri="font:SystemFontFile" size="25" />
     </Label>
-    <Label id="avcMark" translation="[190,238]" width="280" height="36">
-      <Font role="font" uri="font:BoldSystemFontFile" size="22" />
+    <Label id="avcMark" translation="[190,236]" width="300" height="38">
+      <Font role="font" uri="font:BoldSystemFontFile" size="25" />
     </Label>
-    <Label id="hevcMark" translation="[490,238]" width="320" height="36">
-      <Font role="font" uri="font:BoldSystemFontFile" size="22" />
+    <Label id="hevcMark" translation="[500,236]" width="360" height="38">
+      <Font role="font" uri="font:BoldSystemFontFile" size="25" />
     </Label>
-    <Label id="codecStatus" translation="[190,290]" width="1540" height="36" wrap="true">
-      <Font role="font" uri="font:BoldSystemFontFile" size="20" />
+    <Label id="codecStatus" translation="[190,288]" width="1540" height="38" wrap="true">
+      <Font role="font" uri="font:BoldSystemFontFile" size="23" />
     </Label>
-    <Label id="codecStatus2" translation="[190,328]" width="1540" height="48" wrap="true">
-      <Font role="font" uri="font:BoldSystemFontFile" size="20" />
+    <Label id="codecStatus2" translation="[190,328]" width="1540" height="52" wrap="true">
+      <Font role="font" uri="font:BoldSystemFontFile" size="23" />
     </Label>
 
-    <Label text="PRIVACIDAD, HISTORIAL Y FAVORITOS" translation="[190,405]" color="0x56CCF2FF">
-      <Font role="font" uri="font:BoldSystemFontFile" size="18" />
+    <Label text="PRIVACIDAD, HISTORIAL Y FAVORITOS" translation="[190,402]" color="0x56CCF2FF">
+      <Font role="font" uri="font:BoldSystemFontFile" size="21" />
     </Label>
     <Rectangle id="optBg0" translation="[190,444]" width="1540" height="64" color="0x0D162BFF" />
     <Label id="opt0" text="   Borrar todo el historial" translation="[190,444]" width="1540" height="64" vertAlign="center" color="0xFFFFFFFF">
-      <Font role="font" uri="font:BoldSystemFontFile" size="23" />
+      <Font role="font" uri="font:BoldSystemFontFile" size="26" />
     </Label>
     <Rectangle id="optBg1" translation="[190,518]" width="1540" height="64" color="0x0D162BFF" />
     <Poster uri="pkg:/images/ui/star_gold.png" width="26" height="26" translation="[212,537]" loadDisplayMode="scaleToFit" />
     <Label id="opt1" text="Vaciar lista de canales favoritos" translation="[250,518]" width="1460" height="64" vertAlign="center" color="0xFFFFFFFF">
-      <Font role="font" uri="font:BoldSystemFontFile" size="23" />
+      <Font role="font" uri="font:BoldSystemFontFile" size="26" />
     </Label>
 
-    <Label text="CONTROL PARENTAL" translation="[190,614]" color="0x56CCF2FF">
-      <Font role="font" uri="font:BoldSystemFontFile" size="18" />
+    <Label text="CONTROL PARENTAL" translation="[190,610]" color="0x56CCF2FF">
+      <Font role="font" uri="font:BoldSystemFontFile" size="21" />
     </Label>
     <Rectangle id="optBg2" translation="[190,652]" width="1540" height="64" color="0x0D162BFF" />
     <Label id="opt2" text="   Configurar PIN +18" translation="[190,652]" width="1540" height="64" vertAlign="center" color="0xFFFFFFFF">
-      <Font role="font" uri="font:BoldSystemFontFile" size="23" />
+      <Font role="font" uri="font:BoldSystemFontFile" size="26" />
     </Label>
     <Rectangle id="optBg3" translation="[190,726]" width="1540" height="64" color="0x0D162BFF" />
     <Label id="opt3" text="   Cambiar PIN +18" translation="[190,726]" width="1540" height="64" vertAlign="center" color="0xFFFFFFFF">
-      <Font role="font" uri="font:BoldSystemFontFile" size="23" />
+      <Font role="font" uri="font:BoldSystemFontFile" size="26" />
     </Label>
 
     <Rectangle id="optBg4" translation="[190,800]" width="1540" height="64" color="0x0D162BFF" />
     <Label id="opt4" text="   Puente PC (HEVC): 192.168.0.37:8787" translation="[190,800]" width="1540" height="64" vertAlign="center" color="0xFFFFFFFF">
-      <Font role="font" uri="font:BoldSystemFontFile" size="23" />
+      <Font role="font" uri="font:BoldSystemFontFile" size="26" />
     </Label>
 
-    <Label id="status" translation="[190,878]" width="1540" height="58" color="0x94A3B8FF" wrap="true">
-      <Font role="font" uri="font:SystemFontFile" size="20" />
+    <Label id="status" translation="[190,878]" width="1540" height="62" color="0x94A3B8FF" wrap="true">
+      <Font role="font" uri="font:SystemFontFile" size="22" />
     </Label>
     <Label text="Arriba/Abajo elegir   &#x00B7;   OK confirmar   &#x00B7;   Atr&#x00E1;s regresar" translation="[190,965]" color="0x64748BFF">
-      <Font role="font" uri="font:BoldSystemFontFile" size="18" />
+      <Font role="font" uri="font:BoldSystemFontFile" size="20" />
     </Label>
-    <Label text="Compilaci&#x00F3;n v47 &#x00B7; Edici&#x00F3;n Manguangua (by wastrike)" translation="[830,965]" width="900" horizAlign="right" color="0x56CCF2B3">
-      <Font role="font" uri="font:BoldSystemFontFile" size="18" />
+    <Label text="Compilaci&#x00F3;n v48 &#x00B7; Edici&#x00F3;n Manguangua (by wastrike)" translation="[830,965]" width="900" horizAlign="right" color="0x56CCF2B3">
+      <Font role="font" uri="font:BoldSystemFontFile" size="20" />
     </Label>
   </children>
 </component>

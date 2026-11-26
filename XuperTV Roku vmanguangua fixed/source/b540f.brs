@@ -15,9 +15,15 @@ function THEME_GOLD()        as String : return "0xFFC83DFF" : end function
 function THEME_ERR_BG()      as String : return "0x261219FF" : end function
 function THEME_ERR_LINE()    as String : return "0x4C1D2BFF" : end function
 function THEME_ERR_ICON()    as String : return "0xFF5A6EFF" : end function
+function ThemeScaledSize(size as Integer) as Integer
+    if size <= 12 then return size + 2
+    if size <= 32 then return size + 3
+    return size + 2
+end function
 function ThemeFont(size as Integer, bold as Boolean) as Object
     if m.fontCache = invalid then m.fontCache = {}
-    key = size.ToStr() + Tern(bold, "b", "r")
+    eff = ThemeScaledSize(size)
+    key = eff.ToStr() + Tern(bold, "b", "r")
     if m.fontCache[key] <> invalid then return m.fontCache[key]
     f = CreateObject("roSGNode", "Font")
     if bold
@@ -25,12 +31,13 @@ function ThemeFont(size as Integer, bold as Boolean) as Object
     else
         f.uri = "font:SystemFontFile"
     end if
-    f.size = size
+    f.size = eff
     m.fontCache[key] = f
     return f
 end function
 function TextW(s as String, size as Integer) as Integer
-    return Int(Len(s) * size * 0.56)
+    eff = ThemeScaledSize(size)
+    return Int(Len(s) * eff * 0.56)
 end function
 function RAIL_W_COLLAPSED() as Integer : return 300 : end function
 function RAIL_W_EXPANDED()  as Integer : return 300 : end function

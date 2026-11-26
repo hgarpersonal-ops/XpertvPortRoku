@@ -1,6 +1,8 @@
 sub init()
+    m.videoFrame  = m.top.FindNode("videoFrame")
     m.video       = m.top.FindNode("video")
     m.playerBg    = m.top.FindNode("playerBg")
+    m.playerMenu  = m.top.FindNode("playerMenu")
     m.spinner     = m.top.FindNode("spinner")
     m.osd         = m.top.FindNode("osd")
     m.liveOsd     = m.top.FindNode("liveOsd")
@@ -31,6 +33,7 @@ sub init()
     m.subLangIdx  = -1        ' -1 = apagado
     m.subCueIdx   = 0         ' cursor: última cue mostrada
     m.subOffset   = 2.0
+    m.nativeSubTrack = ""
     m.srtTask     = invalid
     m.slbTask    = invalid
     m.licTask    = invalid
@@ -68,6 +71,17 @@ sub init()
     m.vodProbeAttempt = 0
     m.vodFallbackTimer = invalid
     m.vodIgnoreTerminal = false
+    m.pendingVodSeek = 0
+    m.preserveSubsOnPlay = false
+    m.menuOpen = false
+    m.menuMode = "vod"
+    m.menuCursor = 0
+    m.menuSubMode = ""
+    m.menuSubCursor = 0
+    m.menuRows = []
+    m.menuSubItems = []
+    m.screenModeIdx = LoadPlayerPrefInt("screen_mode", 0, 0, 4)
+    m.subSizeIdx    = LoadPlayerPrefInt("sub_size", 1, 0, 2)
     m.hardwareInfo = Hardware_Detect()
     m.video.ObserveField("state", "OnVideoState")
     m.video.ObserveField("position", "OnPosition")
@@ -96,16 +110,19 @@ sub init()
     m.bridgeUsed = false
     m.playingBridge = false
     m.bestBridgeVariant = invalid
+    ApplySubSize()
+    ApplyScreenFormat()
 end sub
 sub OnFavoriteChanged(event as Object)
     isFav = (event.GetData() = true)
     if m.liveOsdFavGroup <> invalid
         m.liveOsdFavGroup.visible = isFav
         if m.liveOsdCategory <> invalid
-            m.liveOsdCategory.translation = Tern(isFav, [446, 929], [298, 929])
-            m.liveOsdCategory.width = Tern(isFav, 560, 708)
+            m.liveOsdCategory.translation = Tern(isFav, [464, 923], [306, 923])
+            m.liveOsdCategory.width = Tern(isFav, 528, 686)
         end if
     end if
+    if m.menuOpen then RenderPlayerMenu()
 end sub
 sub OnStatusMessage(event as Object)
     msg = SafeStr(event.GetData())
@@ -125,9 +142,11 @@ end sub
 sub OnDisplayMode(event as Object)
     mode = SafeStr(event.GetData())
     if mode = "embedded"
+        ClosePlayerMenu()
         m.playerBg.translation = [340, 146]
         m.playerBg.width = 1044
         m.playerBg.height = 588
+        if m.videoFrame <> invalid then m.videoFrame.clippingRect = [340, 146, 1044, 588]
         m.video.translation = [340, 146]
         m.video.width = 1044
         m.video.height = 588
@@ -139,9 +158,8 @@ sub OnDisplayMode(event as Object)
         m.playerBg.translation = [0, 0]
         m.playerBg.width = 1920
         m.playerBg.height = 1080
-        m.video.translation = [0, 0]
-        m.video.width = 1920
-        m.video.height = 1080
+        if m.videoFrame <> invalid then m.videoFrame.clippingRect = [0, 0, 1920, 1080]
+        ApplyScreenFormat()
         m.liveStatus.visible = (SafeStr(m.top.statusMessage) <> "")
         m.spinner.translation = [920, 490]
     end if
@@ -167,7 +185,7 @@ sub OnTransport(event as Object)
     else if cmd = "subearlier"
         NudgeSub(-0.5)
     end if
-    ShowOSD()
+    if not m.menuOpen then ShowOSD()
 end sub
 sub NudgeSub(delta as Float)
     m.subOffset = m.subOffset + delta
@@ -188,11 +206,15 @@ end sub
 sub OnVodContentSet(event as Object)
     contentId = event.GetData()
     if contentId = "" then return
+    ClosePlayerMenu()
     m.vodGen = m.vodGen + 1
     SetVodPlaybackState("PLAYBACK_LOADING")
     ClearPlaybackError()
     m.acceptLiveVideoEvents = false
     m.osdMode = "vod"
+    m.pendingVodSeek = 0
+    m.preserveSubsOnPlay = false
+    m.nativeSubTrack = ""
     m.top.detectedVideoCodec = ""
     m.liveOsd.visible = false
     m.spinner.visible = true
@@ -206,7 +228,7 @@ sub OnVodContentSet(event as Object)
     m.directoLbl.visible = false
     m.progressFill.visible = false
     backHint = m.top.FindNode("backHint")
-    if backHint <> invalid then backHint.text = "OK Pausa   <> Avanzar   Arriba Subtitulos   << >> Ajustar sync   Back Salir"
+    if backHint <> invalid then backHint.text = "OK Menú   ·   Play Pausa   ·   ◀▶ Avanzar   ·   ▲ Subtítulos   ·   Atrás Salir"
     m.vodUrls           = invalid
     m.vodUrlHeaders     = invalid
     m.slbDataVod        = invalid
@@ -557,6 +579,10 @@ sub TryStartVod()
                     mediaCode: variant.mediaCode,
                     codec: variant.codec,
                     duration: variant.duration,
+                    audioInfo: variant.audioInfo,
+                    quality: variant.quality,
+                    height: variant.height,
+                    rawEncode: variant.rawEncode,
                     urls: urls,
                     urlHeaders: urlHeaders,
                     headers: urlHeaders[0],
@@ -763,6 +789,10 @@ end function
 sub OnChannelCodeSet(event as Object)
     channelCode = event.GetData()
     if channelCode = "" then return
+    ClosePlayerMenu()
+    m.pendingVodSeek = 0
+    m.preserveSubsOnPlay = false
+    m.nativeSubTrack = ""
     m.liveGen = m.top.requestGeneration
     m.vodGen = m.vodGen + 1
     if m.probeTask <> invalid
@@ -782,6 +812,8 @@ sub OnChannelCodeSet(event as Object)
     m.top.detectedVideoCodec = ""
     m.osd.visible = false
     m.spinner.visible = true
+    backHint = m.top.FindNode("backHint")
+    if backHint <> invalid then backHint.text = "OK Menú   ·   Atrás salir"
     m.liveOsdTitle.text = m.top.channelName
     m.liveOsdCategory.text = SafeStr(m.top.channelCategory)
     m.liveOsdLogo.uri = SafeStr(m.top.channelLogo)
@@ -1184,17 +1216,21 @@ sub PlayUrl(url as String, headers = invalid as Dynamic, isLive = true as Boolea
         m.video.notificationInterval = 0.1
         if m.vodDuration > 0 then content.length = m.vodDuration
     end if
-    if not isLive then SubOff()
-    m.subLangIdx = -1      ' -1 = subtítulos apagados
+    if not isLive and not m.preserveSubsOnPlay
+        SubOff()
+        m.subLangIdx = -1      ' -1 = subtítulos apagados
+    end if
+    m.preserveSubsOnPlay = false
     m.audioIdx = 0
     if not isLive and m.vodDuration > 0
         m.progressFill.width = 0
         m.progressFill.visible = true
     end if
     if isLive then m.acceptLiveVideoEvents = true
+    if m.top.displayMode = "fullscreen" then ApplyScreenFormat()
     m.video.content = content
     m.video.control = "play"
-    ShowOSD()
+    if not m.menuOpen then ShowOSD()
 end sub
 sub CycleSub()
     n = 0
@@ -1395,19 +1431,12 @@ sub OnVideoState(event as Object)
         end if
     end if
     if state = "playing"
-        at = m.video.availableAudioTracks
-        st = m.video.availableSubtitleTracks
-        na = 0 : ns = 0
-        if at <> invalid then na = at.Count()
-        if st <> invalid then ns = st.Count()
-        if at <> invalid
-            for each t in at
-            end for
+        if m.osdMode = "vod" and m.pendingVodSeek <> invalid and m.pendingVodSeek > 0
+            seekTarget = m.pendingVodSeek
+            m.pendingVodSeek = 0
+            m.video.seek = seekTarget
         end if
-        if st <> invalid
-            for each t in st
-            end for
-        end if
+        if m.menuOpen then RenderPlayerMenu()
     end if
     m.top.stateGeneration = m.liveGen
     m.top.state = state
@@ -1442,6 +1471,9 @@ function FmtTime(s as Integer) as String
 end function
 sub OnControlChanged(event as Object)
     if event.GetData() = "stop"
+        ClosePlayerMenu()
+        m.pendingVodSeek = 0
+        m.preserveSubsOnPlay = false
         m.vodGen = m.vodGen + 1
         m.liveGen = m.liveGen + 1
         m.acceptLiveVideoEvents = false
@@ -1461,6 +1493,7 @@ sub OnControlChanged(event as Object)
         m.video.content = invalid
         SubOff()
         m.subLangIdx = -1
+        m.nativeSubTrack = ""
         if m.bridgeUsed
             m.bridgeUsed = false
             m.playingBridge = false
@@ -1490,5 +1523,729 @@ sub CapturePlaybackError()
     m.top.lastErrorDetail = detail
 end sub
 sub OnPoke(event as Object)
-    ShowOSD()
+    if not m.menuOpen then ShowOSD()
 end sub
+
+function LoadPlayerPrefInt(key as String, defVal as Integer, minVal as Integer, maxVal as Integer) as Integer
+    reg = CreateObject("roRegistrySection", "xuper_prefs")
+    raw = SafeStr(reg.Read(key)).Trim()
+    if raw = "" then return defVal
+    v = AsInt(raw)
+    if v < minVal or v > maxVal then return defVal
+    return v
+end function
+
+sub SavePlayerPrefInt(key as String, value as Integer)
+    reg = CreateObject("roRegistrySection", "xuper_prefs")
+    reg.Write(key, value.ToStr())
+    reg.Flush()
+end sub
+
+function ScreenFormats() as Object
+    return [
+        { name: "Original (Auto)", x: 0,    y: 0,    w: 1920, h: 1080 },
+        { name: "Zoom Cine (115%)", x: -144, y: -81,  w: 2208, h: 1242 },
+        { name: "Llenar Pantalla (134%)", x: -326, y: -184, w: 2572, h: 1448 },
+        { name: "Zoom Máximo (150%)", x: -480, y: -270, w: 2880, h: 1620 },
+        { name: "Compacto (92%)", x: 77,   y: 43,   w: 1766, h: 994 }
+    ]
+end function
+
+sub ApplyScreenFormat()
+    if m.video = invalid then return
+    if SafeStr(m.top.displayMode) = "embedded" then return
+    fmts = ScreenFormats()
+    if m.screenModeIdx = invalid or m.screenModeIdx < 0 or m.screenModeIdx >= fmts.Count() then m.screenModeIdx = 0
+    f = fmts[m.screenModeIdx]
+    if m.videoFrame <> invalid then m.videoFrame.clippingRect = [0, 0, 1920, 1080]
+    m.video.translation = [f.x, f.y]
+    m.video.width = f.w
+    m.video.height = f.h
+end sub
+
+function SubSizeConfigs() as Object
+    return [
+        { name: "Normal",     px: 38 },
+        { name: "Grande",     px: 46 },
+        { name: "Muy grande", px: 54 }
+    ]
+end function
+
+sub ApplySubSize()
+    if m.subLabel = invalid or m.subShadow = invalid then return
+    cfgs = SubSizeConfigs()
+    if m.subSizeIdx = invalid or m.subSizeIdx < 0 or m.subSizeIdx >= cfgs.Count() then m.subSizeIdx = 1
+    px = cfgs[m.subSizeIdx].px
+    f = CreateObject("roSGNode", "Font")
+    f.uri = "font:BoldSystemFontFile"
+    f.size = px
+    m.subLabel.font = f
+    m.subShadow.font = f
+end sub
+
+function OpenPlayerMenu(mode = "" as String) as Boolean
+    if SafeStr(m.top.displayMode) = "embedded" then return false
+    if mode <> ""
+        m.menuMode = mode
+    else
+        m.menuMode = Tern(m.osdMode = "live", "live", "vod")
+    end if
+    m.menuOpen = true
+    m.menuSubMode = ""
+    m.menuCursor = 0
+    m.menuSubCursor = 0
+    m.top.menuOpen = true
+    m.osd.visible = false
+    m.liveOsd.visible = false
+    if m.osdTimer <> invalid then m.osdTimer.control = "stop"
+    RenderPlayerMenu()
+    return true
+end function
+
+function ClosePlayerMenu(dummy = "" as Dynamic) as Boolean
+    if m.playerMenu <> invalid
+        m.playerMenu.visible = false
+        m.playerMenu.RemoveChildren(m.playerMenu.GetChildren(-1, 0))
+    end if
+    m.menuOpen = false
+    m.menuSubMode = ""
+    m.top.menuOpen = false
+    return true
+end function
+
+function FormatMenuText(s as String, px as Integer, bold as Boolean) as Object
+    f = CreateObject("roSGNode", "Font")
+    f.uri = Tern(bold, "font:BoldSystemFontFile", "font:SystemFontFile")
+    f.size = px
+    return f
+end function
+
+function GetActiveAudioTrackId() as String
+    if m.video = invalid then return ""
+    if m.video.HasField("audioTrack") then return SafeStr(m.video.audioTrack)
+    return ""
+end function
+
+function VodVariantLabel(v as Object) as String
+    parts = []
+    aud = SafeStr(v.audioInfo).Trim()
+    if aud <> "" then parts.Push(LangName(aud))
+    q = SafeStr(v.quality).Trim()
+    if q <> ""
+        parts.Push(q)
+    else if v.height <> invalid and v.height > 0
+        parts.Push(v.height.ToStr() + "p")
+    end if
+    c = SafeStr(v.codec).Trim()
+    if c <> "" then parts.Push(c)
+    if parts.Count() = 0 then return "Pista principal"
+    out = ""
+    for each p in parts
+        if out <> "" then out = out + " · "
+        out = out + p
+    end for
+    return out
+end function
+
+function GetAudioChoices() as Object
+    items = []
+    at = invalid
+    if m.video <> invalid then at = m.video.availableAudioTracks
+    curTrack = GetActiveAudioTrackId()
+    if at <> invalid and at.Count() > 0
+        matchedAny = false
+        for each t in at
+            tid = SafeStr(t.Track)
+            if tid = "" then tid = SafeStr(t.TrackName)
+            if tid <> "" and tid = curTrack then matchedAny = true
+        end for
+        idx = 0
+        for each t in at
+            tid = SafeStr(t.Track)
+            if tid = "" then tid = SafeStr(t.TrackName)
+            lang = SafeStr(t.Language)
+            tName = SafeStr(t.Name)
+            lbl = ""
+            if lang <> "" then lbl = LangName(lang)
+            if tName <> "" and LCase(tName) <> LCase(lbl)
+                if lbl <> "" then lbl = lbl + " (" + tName + ")" else lbl = tName
+            end if
+            if lbl = "" then lbl = "Audio " + (idx + 1).ToStr()
+            isAct = (tid <> "" and tid = curTrack)
+            if not matchedAny and idx = 0 then isAct = true
+            items.Push({ kind: "native", trackId: tid, label: lbl, active: isAct })
+            idx = idx + 1
+        end for
+    end if
+    if items.Count() <= 1 and m.osdMode = "vod" and m.vodVariants <> invalid and m.vodVariants.Count() > 1
+        seenMc = {}
+        curMc = ""
+        if m.vodVariantIdx >= 0 and m.vodVariantIdx < m.vodVariants.Count()
+            curMc = SafeStr(m.vodVariants[m.vodVariantIdx].mediaCode)
+        end if
+        vodItems = []
+        for i = 0 to m.vodVariants.Count() - 1
+            v = m.vodVariants[i]
+            mc = SafeStr(v.mediaCode)
+            if mc <> "" and seenMc[mc] = invalid
+                seenMc[mc] = true
+                vodItems.Push({
+                    kind: "variant",
+                    varIdx: i,
+                    mediaCode: mc,
+                    label: VodVariantLabel(v),
+                    active: (mc = curMc)
+                })
+            end if
+        end for
+        if vodItems.Count() > 1
+            return vodItems
+        end if
+    end if
+    if items.Count() = 0
+        lblDef = "Por defecto"
+        if SafeStr(m.video.audioFormat) <> "" then lblDef = "Por defecto (" + UCase(SafeStr(m.video.audioFormat)) + ")"
+        items.Push({ kind: "none", trackId: "", label: lblDef, active: true })
+    end if
+    return items
+end function
+
+function GetSubChoices() as Object
+    items = []
+    offActive = (m.subLangIdx < 0 and SafeStr(m.nativeSubTrack) = "")
+    items.Push({ kind: "off", label: "Apagados (Off)", active: offActive })
+    if m.vodSubs <> invalid and m.vodSubs.Count() > 0
+        for i = 0 to m.vodSubs.Count() - 1
+            s = m.vodSubs[i]
+            items.Push({
+                kind: "srt",
+                idx: i,
+                url: SafeStr(s.url),
+                label: LangName(SafeStr(s.lang)) + " (SRT)",
+                active: (m.subLangIdx = i)
+            })
+        end for
+    end if
+    st = invalid
+    if m.video <> invalid then st = m.video.availableSubtitleTracks
+    if st <> invalid and st.Count() > 0
+        nIdx = 0
+        for each t in st
+            tid = SafeStr(t.TrackName)
+            if tid = "" then tid = SafeStr(t.Track)
+            if tid <> ""
+                desc = SafeStr(t.Description)
+                if desc = "" then desc = SafeStr(t.Name)
+                lang = SafeStr(t.Language)
+                lbl = ""
+                if lang <> "" then lbl = LangName(lang)
+                if desc <> "" and LCase(desc) <> LCase(lbl)
+                    if lbl <> "" then lbl = lbl + " (" + desc + ")" else lbl = desc
+                end if
+                if lbl = "" then lbl = "CC " + (nIdx + 1).ToStr()
+                items.Push({
+                    kind: "native",
+                    trackId: tid,
+                    label: lbl + " (CC)",
+                    active: (m.nativeSubTrack = tid)
+                })
+                nIdx = nIdx + 1
+            end if
+        end for
+    end if
+    return items
+end function
+
+function GetQualityChoices() as Object
+    items = []
+    if m.osdMode = "vod" and m.vodVariants <> invalid and m.vodVariants.Count() > 0
+        seenMc = {}
+        curMc = ""
+        if m.vodVariantIdx >= 0 and m.vodVariantIdx < m.vodVariants.Count()
+            curMc = SafeStr(m.vodVariants[m.vodVariantIdx].mediaCode)
+        end if
+        for i = 0 to m.vodVariants.Count() - 1
+            v = m.vodVariants[i]
+            mc = SafeStr(v.mediaCode)
+            if mc <> "" and seenMc[mc] = invalid
+                seenMc[mc] = true
+                items.Push({
+                    kind: "variant",
+                    varIdx: i,
+                    label: VodVariantLabel(v),
+                    active: (mc = curMc)
+                })
+            end if
+        end for
+    end if
+    if items.Count() = 0
+        fmtInfo = SafeStr(m.video.videoFormat)
+        audInfo = SafeStr(m.video.audioFormat)
+        lbl = "Automática"
+        if fmtInfo <> "" then lbl = Hardware_CodecLabel(fmtInfo)
+        if lbl = "" then lbl = fmtInfo
+        if audInfo <> "" then lbl = lbl + " · " + UCase(audInfo)
+        items.Push({ kind: "none", label: lbl, active: true })
+    end if
+    return items
+end function
+
+function GetSubCfgChoices() as Object
+    cfgs = SubSizeConfigs()
+    sign = "+"
+    if m.subOffset < 0 then sign = ""
+    curSync = sign + Str(m.subOffset).Trim() + "s"
+    items = [
+        { kind: "sync", delta: -1.0, label: "Sync -1.0s  (Actual: " + curSync + ")", active: false },
+        { kind: "sync", delta: -0.5, label: "Sync -0.5s  (Actual: " + curSync + ")", active: false },
+        { kind: "sync", delta:  0.5, label: "Sync +0.5s  (Actual: " + curSync + ")", active: false },
+        { kind: "sync", delta:  1.0, label: "Sync +1.0s  (Actual: " + curSync + ")", active: false },
+        { kind: "syncReset", label: "Reiniciar sync (0.0s)", active: (Abs(m.subOffset) < 0.05) }
+    ]
+    for i = 0 to cfgs.Count() - 1
+        items.Push({
+            kind: "subsize",
+            idx: i,
+            label: "Tamaño: " + cfgs[i].name + " (" + cfgs[i].px.ToStr() + "pt)",
+            active: (i = m.subSizeIdx)
+        })
+    end for
+    return items
+end function
+
+function GetSubListForMode(subMode as String) as Object
+    if subMode = "audio" then return GetAudioChoices()
+    if subMode = "subs" then return GetSubChoices()
+    if subMode = "quality" then return GetQualityChoices()
+    if subMode = "subcfg" then return GetSubCfgChoices()
+    if subMode = "screen"
+        fmts = ScreenFormats()
+        out = []
+        for i = 0 to fmts.Count() - 1
+            out.Push({ kind: "screen", idx: i, label: fmts[i].name, active: (i = m.screenModeIdx) })
+        end for
+        return out
+    end if
+    return []
+end function
+
+function ActiveLabelOf(items as Object, fallback as String) as String
+    for each it in items
+        if it.active = true then return SafeStr(it.label)
+    end for
+    return fallback
+end function
+
+function BuildPlayerMenuRows() as Object
+    audioItems = GetAudioChoices()
+    subItems = GetSubChoices()
+    fmts = ScreenFormats()
+    screenVal = fmts[m.screenModeIdx].name
+    audioVal = ActiveLabelOf(audioItems, "Por defecto")
+    if audioItems.Count() > 1 then audioVal = audioVal + " (" + audioItems.Count().ToStr() + ")"
+    subVal = ActiveLabelOf(subItems, "Apagados")
+    if subItems.Count() > 1 and m.subLangIdx < 0 and SafeStr(m.nativeSubTrack) = ""
+        subVal = "Apagados (" + (subItems.Count() - 1).ToStr() + " disp.)"
+    end if
+
+    rows = []
+    if m.menuMode = "live"
+        favVal = Tern(m.top.isFavorite = true, "★ En Favoritos", "☆ Agregar")
+        rows.Push({ id: "guide",  label: "Lista de canales",     val: "Abrir guía",     hasSub: false })
+        rows.Push({ id: "audio",  label: "Idioma / Audio",       val: audioVal,         hasSub: true })
+        rows.Push({ id: "subs",   label: "Subtítulos (CC)",      val: subVal,           hasSub: true })
+        rows.Push({ id: "screen", label: "Formato de pantalla",  val: screenVal,        hasSub: true })
+        rows.Push({ id: "fav",    label: "Favorito",             val: favVal,           hasSub: false })
+        rows.Push({ id: "exit",   label: "Salir de TV en vivo",  val: "Inicio",         hasSub: false })
+    else
+        isPaused = (m.video <> invalid and m.video.state = "paused")
+        playVal = Tern(isPaused, "▶ Reanudar", "⏸ Pausar")
+        cfgs = SubSizeConfigs()
+        sign = "+"
+        if m.subOffset < 0 then sign = ""
+        subCfgVal = sign + Str(m.subOffset).Trim() + "s · " + cfgs[m.subSizeIdx].name
+        qItems = GetQualityChoices()
+        qVal = ActiveLabelOf(qItems, "Automática")
+        rows.Push({ id: "playpause", label: "Reproducción",        val: playVal,   hasSub: false })
+        rows.Push({ id: "audio",     label: "Idioma / Audio",      val: audioVal,  hasSub: true })
+        rows.Push({ id: "subs",      label: "Subtítulos",          val: subVal,    hasSub: true })
+        rows.Push({ id: "subcfg",    label: "Sync y tamaño sub.",  val: subCfgVal, hasSub: true })
+        rows.Push({ id: "screen",    label: "Formato de pantalla", val: screenVal, hasSub: true })
+        rows.Push({ id: "quality",   label: "Calidad / Pista",     val: qVal,      hasSub: true })
+        rows.Push({ id: "exit",      label: "Salir del video",     val: "Volver",  hasSub: false })
+    end if
+    return rows
+end function
+
+sub SwitchVodVariantByIndex(targetIdx as Integer)
+    if m.vodVariants = invalid or targetIdx < 0 or targetIdx >= m.vodVariants.Count() then return
+    if targetIdx = m.vodVariantIdx then return
+    cur = CurPos()
+    if cur > 3 then m.pendingVodSeek = cur
+    m.preserveSubsOnPlay = (m.subLangIdx >= 0)
+    m.vodVariantIdx = targetIdx
+    m.vodUrlIdx = 0
+    m.vodIgnoreTerminal = true
+    m.playingVod = false
+    SetVodPlaybackState("PLAYBACK_LOADING")
+    m.spinner.visible = true
+    hevcOk = (m.hardwareInfo <> invalid and m.hardwareInfo.hevc = true)
+    vSel = m.vodVariants[targetIdx]
+    if not hevcOk and vSel.score >= 20000 and PcBridge_LoadHost() <> ""
+        TryStartVodViaBridge(vSel)
+    else
+        if m.bridgeUsed
+            m.bridgeUsed = false
+            m.playingBridge = false
+            StopPcBridge()
+        end if
+        PlayVodUrl()
+    end if
+end sub
+
+sub ApplyAudioChoice(it as Object)
+    if it = invalid then return
+    if it.kind = "native" and SafeStr(it.trackId) <> ""
+        m.video.audioTrack = SafeStr(it.trackId)
+        FlashAV("Audio: " + SafeStr(it.label))
+    else if it.kind = "variant" and it.varIdx <> invalid
+        FlashAV("Cambiando audio: " + SafeStr(it.label))
+        SwitchVodVariantByIndex(it.varIdx)
+    else
+        FlashAV("Audio único disponible")
+    end if
+end sub
+
+sub ApplySubChoice(it as Object)
+    if it = invalid then return
+    if it.kind = "off"
+        m.subLangIdx = -1
+        m.nativeSubTrack = ""
+        SubOff()
+        if m.video.HasField("globalCaptionMode") then m.video.globalCaptionMode = "Off"
+        if m.video.HasField("subtitleTrack") then m.video.subtitleTrack = ""
+        FlashAV("Subtítulos: Apagados")
+    else if it.kind = "srt"
+        m.nativeSubTrack = ""
+        if m.video.HasField("globalCaptionMode") then m.video.globalCaptionMode = "Off"
+        m.subLangIdx = it.idx
+        FlashAV("Subtítulos: " + SafeStr(it.label))
+        LoadSub(SafeStr(it.url))
+    else if it.kind = "native" and SafeStr(it.trackId) <> ""
+        SubOff()
+        m.subLangIdx = -1
+        m.nativeSubTrack = SafeStr(it.trackId)
+        if m.video.HasField("globalCaptionMode") then m.video.globalCaptionMode = "On"
+        if m.video.HasField("subtitleTrack") then m.video.subtitleTrack = m.nativeSubTrack
+        FlashAV("Subtítulos: " + SafeStr(it.label))
+    end if
+end sub
+
+sub ApplySubItemChoice(subMode as String, it as Object)
+    if it = invalid then return
+    if subMode = "audio"
+        ApplyAudioChoice(it)
+    else if subMode = "subs"
+        ApplySubChoice(it)
+    else if subMode = "quality"
+        if it.kind = "variant" and it.varIdx <> invalid
+            FlashAV("Cambiando pista: " + SafeStr(it.label))
+            SwitchVodVariantByIndex(it.varIdx)
+        end if
+    else if subMode = "screen"
+        m.screenModeIdx = it.idx
+        SavePlayerPrefInt("screen_mode", m.screenModeIdx)
+        ApplyScreenFormat()
+        FlashAV("Pantalla: " + SafeStr(it.label))
+    else if subMode = "subcfg"
+        if it.kind = "sync"
+            NudgeSub(it.delta)
+        else if it.kind = "syncReset"
+            m.subOffset = 0.0
+            RenderSubAt(CurPos())
+            FlashAV("Sub sync: 0.0s")
+        else if it.kind = "subsize"
+            m.subSizeIdx = it.idx
+            SavePlayerPrefInt("sub_size", m.subSizeIdx)
+            ApplySubSize()
+            cfgs = SubSizeConfigs()
+            FlashAV("Tamaño subtítulos: " + cfgs[m.subSizeIdx].name)
+        end if
+    end if
+end sub
+
+sub QuickCycleRow(rowId as String, stepDir as Integer)
+    if rowId = "screen"
+        fmts = ScreenFormats()
+        m.screenModeIdx = (m.screenModeIdx + stepDir + fmts.Count()) mod fmts.Count()
+        SavePlayerPrefInt("screen_mode", m.screenModeIdx)
+        ApplyScreenFormat()
+        FlashAV("Pantalla: " + fmts[m.screenModeIdx].name)
+    else if rowId = "subcfg"
+        NudgeSub(stepDir * 0.5)
+    else if rowId = "audio" or rowId = "subs" or rowId = "quality"
+        items = GetSubListForMode(rowId)
+        if items.Count() <= 1 then return
+        curIdx = 0
+        for i = 0 to items.Count() - 1
+            if items[i].active = true then curIdx = i : exit for
+        end for
+        nxtIdx = (curIdx + stepDir + items.Count()) mod items.Count()
+        ApplySubItemChoice(rowId, items[nxtIdx])
+    end if
+end sub
+
+function HandleMenuKey(key as String) as Boolean
+    if not m.menuOpen then return false
+    m.menuRows = BuildPlayerMenuRows()
+    if m.menuRows.Count() = 0 then return true
+    if m.menuCursor >= m.menuRows.Count() then m.menuCursor = m.menuRows.Count() - 1
+    if m.menuCursor < 0 then m.menuCursor = 0
+
+    if m.menuSubMode <> ""
+        m.menuSubItems = GetSubListForMode(m.menuSubMode)
+        if m.menuSubItems.Count() = 0
+            m.menuSubMode = ""
+            RenderPlayerMenu()
+            return true
+        end if
+        if m.menuSubCursor >= m.menuSubItems.Count() then m.menuSubCursor = m.menuSubItems.Count() - 1
+        if m.menuSubCursor < 0 then m.menuSubCursor = 0
+
+        if key = "back" or key = "left"
+            m.menuSubMode = ""
+            RenderPlayerMenu()
+            return true
+        else if key = "up"
+            m.menuSubCursor = (m.menuSubCursor - 1 + m.menuSubItems.Count()) mod m.menuSubItems.Count()
+            RenderPlayerMenu()
+            return true
+        else if key = "down"
+            m.menuSubCursor = (m.menuSubCursor + 1) mod m.menuSubItems.Count()
+            RenderPlayerMenu()
+            return true
+        else if key = "OK"
+            chosen = m.menuSubItems[m.menuSubCursor]
+            subMode = m.menuSubMode
+            ApplySubItemChoice(subMode, chosen)
+            if subMode <> "subcfg"
+                m.menuSubMode = ""
+            end if
+            RenderPlayerMenu()
+            return true
+        end if
+        return true
+    end if
+
+    curRow = m.menuRows[m.menuCursor]
+    if key = "back" or key = "options"
+        ClosePlayerMenu()
+        return true
+    else if key = "up"
+        m.menuCursor = (m.menuCursor - 1 + m.menuRows.Count()) mod m.menuRows.Count()
+        RenderPlayerMenu()
+        return true
+    else if key = "down"
+        m.menuCursor = (m.menuCursor + 1) mod m.menuRows.Count()
+        RenderPlayerMenu()
+        return true
+    else if key = "left"
+        QuickCycleRow(curRow.id, -1)
+        RenderPlayerMenu()
+        return true
+    else if key = "right"
+        QuickCycleRow(curRow.id, 1)
+        RenderPlayerMenu()
+        return true
+    else if key = "play"
+        if m.osdMode = "vod"
+            if m.video.state = "paused"
+                m.video.control = "resume"
+            else
+                m.video.control = "pause"
+            end if
+            RenderPlayerMenu()
+        end if
+        return true
+    else if key = "OK"
+        if curRow.id = "playpause"
+            if m.video.state = "paused"
+                m.video.control = "resume"
+            else
+                m.video.control = "pause"
+            end if
+            RenderPlayerMenu()
+        else if curRow.id = "guide"
+            ClosePlayerMenu()
+            m.top.menuAction = "openGuide"
+        else if curRow.id = "fav"
+            m.top.menuAction = "toggleFav"
+        else if curRow.id = "exit"
+            ClosePlayerMenu()
+            m.top.menuAction = "exitPlayer"
+        else if curRow.hasSub = true
+            m.menuSubMode = curRow.id
+            m.menuSubItems = GetSubListForMode(m.menuSubMode)
+            m.menuSubCursor = 0
+            for i = 0 to m.menuSubItems.Count() - 1
+                if m.menuSubItems[i].active = true then m.menuSubCursor = i : exit for
+            end for
+            RenderPlayerMenu()
+        end if
+        return true
+    end if
+    return true
+end function
+
+sub RenderPlayerMenu()
+    if m.playerMenu = invalid then return
+    m.playerMenu.RemoveChildren(m.playerMenu.GetChildren(-1, 0))
+    if not m.menuOpen
+        m.playerMenu.visible = false
+        return
+    end if
+    m.playerMenu.visible = true
+    m.menuRows = BuildPlayerMenuRows()
+
+    scrim = m.playerMenu.CreateChild("Rectangle")
+    scrim.width = 1920 : scrim.height = 1080 : scrim.color = "0x00000066"
+
+    hasSub = (m.menuSubMode <> "")
+    MAIN_W = 790
+    SUB_W  = 580
+    GAP_X  = 24
+    TOTAL_W = Tern(hasSub, MAIN_W + GAP_X + SUB_W, MAIN_W)
+    PANEL_X = Int((1920 - TOTAL_W) / 2)
+    ROW_H = 66
+    ROW_STEP = 74
+    PANEL_H = 176 + m.menuRows.Count() * ROW_STEP
+    if PANEL_H < 480 then PANEL_H = 480
+    PANEL_Y = Int((1080 - PANEL_H) / 2)
+
+    panel = m.playerMenu.CreateChild("Rectangle")
+    panel.translation = [PANEL_X, PANEL_Y]
+    panel.width = MAIN_W : panel.height = PANEL_H
+    panel.color = "0x070E1FF2"
+
+    borderT = m.playerMenu.CreateChild("Rectangle")
+    borderT.translation = [PANEL_X, PANEL_Y] : borderT.width = MAIN_W : borderT.height = 2 : borderT.color = "0x1E3A6AFF"
+    accent = m.playerMenu.CreateChild("Rectangle")
+    accent.translation = [PANEL_X, PANEL_Y] : accent.width = 6 : accent.height = PANEL_H : accent.color = THEME_ACCENT()
+
+    hdrTitle = m.playerMenu.CreateChild("Label")
+    hdrTitle.translation = [PANEL_X + 34, PANEL_Y + 26]
+    hdrTitle.width = MAIN_W - 68 : hdrTitle.height = 38
+    hdrTitle.text = "MENÚ DE REPRODUCCIÓN"
+    hdrTitle.font = FormatMenuText("", 26, true)
+    hdrTitle.color = THEME_ACCENT_LT()
+
+    hdrSub = m.playerMenu.CreateChild("Label")
+    hdrSub.translation = [PANEL_X + 34, PANEL_Y + 66]
+    hdrSub.width = MAIN_W - 68 : hdrSub.height = 32
+    hdrSub.text = SafeStr(m.top.channelName)
+    hdrSub.font = FormatMenuText("", 21, false)
+    hdrSub.color = THEME_MUTED()
+    hdrSub.ellipsisText = "..."
+
+    for i = 0 to m.menuRows.Count() - 1
+        r = m.menuRows[i]
+        ry = PANEL_Y + 114 + i * ROW_STEP
+        foc = (i = m.menuCursor)
+        rbg = m.playerMenu.CreateChild("Rectangle")
+        rbg.translation = [PANEL_X + 26, ry]
+        rbg.width = MAIN_W - 52 : rbg.height = ROW_H
+        rbg.color = Tern(foc, Tern(hasSub, "0x153463FF", THEME_ACCENT()), "0x0D172EEB")
+
+        if foc
+            rbar = m.playerMenu.CreateChild("Rectangle")
+            rbar.translation = [PANEL_X + 26, ry] : rbar.width = 5 : rbar.height = ROW_H : rbar.color = "0xFFFFFFFF"
+        end if
+
+        rlbl = m.playerMenu.CreateChild("Label")
+        rlbl.translation = [PANEL_X + 46, ry]
+        rlbl.width = 330 : rlbl.height = ROW_H : rlbl.vertAlign = "center"
+        rlbl.text = r.label
+        rlbl.font = FormatMenuText("", 22, true)
+        rlbl.color = "0xFFFFFFFF"
+
+        valTxt = SafeStr(r.val)
+        if r.hasSub = true then valTxt = valTxt + "  ▸"
+        rval = m.playerMenu.CreateChild("Label")
+        rval.translation = [PANEL_X + 380, ry]
+        rval.width = MAIN_W - 424 : rval.height = ROW_H
+        rval.vertAlign = "center" : rval.horizAlign = "right" : rval.ellipsisText = "..."
+        rval.text = valTxt
+        rval.font = FormatMenuText("", 20, foc)
+        rval.color = Tern(foc, "0xFFFFFFFF", THEME_ACCENT_LT())
+    end for
+
+    hint = m.playerMenu.CreateChild("Label")
+    hint.translation = [PANEL_X + 34, PANEL_Y + PANEL_H - 44]
+    hint.width = MAIN_W - 68 : hint.height = 28
+    hint.text = Tern(hasSub, "▲▼ Elegir opción   ·   OK Aplicar   ·   ◀ / Atrás Volver", "▲▼ Elegir   ·   ◀▶ Cambiar rápido   ·   OK Lista   ·   Atrás Cerrar")
+    hint.font = FormatMenuText("", 18, false)
+    hint.color = THEME_MUTED()
+
+    if hasSub
+        m.menuSubItems = GetSubListForMode(m.menuSubMode)
+        SUB_X = PANEL_X + MAIN_W + GAP_X
+        VISIBLE_SUB = 7
+        if m.menuSubCursor >= m.menuSubItems.Count() then m.menuSubCursor = m.menuSubItems.Count() - 1
+        if m.menuSubCursor < 0 then m.menuSubCursor = 0
+        startS = m.menuSubCursor - Int(VISIBLE_SUB / 2)
+        if startS < 0 then startS = 0
+        maxS = m.menuSubItems.Count() - VISIBLE_SUB
+        if maxS < 0 then maxS = 0
+        if startS > maxS then startS = maxS
+        lastS = startS + VISIBLE_SUB - 1
+        if lastS >= m.menuSubItems.Count() then lastS = m.menuSubItems.Count() - 1
+
+        spanH = 148 + (lastS - startS + 1) * ROW_STEP
+        if spanH < PANEL_H then spanH = PANEL_H
+
+        spanel = m.playerMenu.CreateChild("Rectangle")
+        spanel.translation = [SUB_X, PANEL_Y]
+        spanel.width = SUB_W : spanel.height = spanH
+        spanel.color = "0x070E1FF7"
+
+        sborder = m.playerMenu.CreateChild("Rectangle")
+        sborder.translation = [SUB_X, PANEL_Y] : sborder.width = SUB_W : sborder.height = 2 : sborder.color = "0x1E3A6AFF"
+        sacc = m.playerMenu.CreateChild("Rectangle")
+        sacc.translation = [SUB_X, PANEL_Y] : sacc.width = 6 : sacc.height = spanH : sacc.color = THEME_ACCENT_LT()
+
+        subTitleMap = {
+            audio: "IDIOMA / AUDIO",
+            subs: "SUBTÍTULOS",
+            subcfg: "SYNC Y TAMAÑO SUBTÍTULOS",
+            screen: "FORMATO DE PANTALLA",
+            quality: "CALIDAD / PISTA"
+        }
+        sTitle = m.playerMenu.CreateChild("Label")
+        sTitle.translation = [SUB_X + 30, PANEL_Y + 34]
+        sTitle.width = SUB_W - 60 : sTitle.height = 40
+        sTitle.text = SafeStr(subTitleMap[m.menuSubMode])
+        sTitle.font = FormatMenuText("", 24, true)
+        sTitle.color = THEME_ACCENT_LT()
+
+        for j = startS to lastS
+            si = m.menuSubItems[j]
+            sy = PANEL_Y + 114 + (j - startS) * ROW_STEP
+            sfoc = (j = m.menuSubCursor)
+            sact = (si.active = true)
+            sbg = m.playerMenu.CreateChild("Rectangle")
+            sbg.translation = [SUB_X + 24, sy]
+            sbg.width = SUB_W - 48 : sbg.height = ROW_H
+            sbg.color = Tern(sfoc, THEME_ACCENT(), Tern(sact, "0x122B52FF", "0x0D172EEB"))
+
+            prefix = Tern(sact, "✓  ", "    ")
+            slbl = m.playerMenu.CreateChild("Label")
+            slbl.translation = [SUB_X + 40, sy]
+            slbl.width = SUB_W - 80 : slbl.height = ROW_H
+            slbl.vertAlign = "center" : slbl.ellipsisText = "..."
+            slbl.text = prefix + SafeStr(si.label)
+            slbl.font = FormatMenuText("", 21, sfoc or sact)
+            slbl.color = Tern(sfoc, "0xFFFFFFFF", Tern(sact, THEME_ACCENT_LT(), "0xE2E8F0FF"))
+        end for
+    end if
+end sub
+

@@ -13,34 +13,34 @@
   <script type="text/brightscript" uri="pkg:/components/03fa1.brs" />
   <children>
     <Rectangle width="1920" height="1080" color="0x040814F5" />
-    <Label text="Diagn&#x00F3;stico XuperTV" color="0x56CCF2FF" translation="[260, 120]">
-      <Font role="font" uri="font:BoldSystemFontFile" size="34" />
+    <Label text="Diagn&#x00F3;stico XuperTV" color="0x56CCF2FF" translation="[260, 114]">
+      <Font role="font" uri="font:BoldSystemFontFile" size="38" />
     </Label>
-    <Rectangle width="1400" height="470" translation="[260, 180]" color="0x0C1528FF" />
-    <Label id="dbgInfo" text="" color="0xF8FAFCFF" translation="[300, 202]" width="1330" height="430">
-      <Font role="font" uri="font:SystemFontFile" size="20" />
+    <Rectangle width="1400" height="476" translation="[260, 174]" color="0x0C1528FF" />
+    <Label id="dbgInfo" text="" color="0xF8FAFCFF" translation="[300, 196]" width="1330" height="440">
+      <Font role="font" uri="font:SystemFontFile" size="23" />
     </Label>
-    <Rectangle id="dbgBg0" width="1400" height="62" translation="[260, 680]" color="0x13203BFF" />
+    <Rectangle id="dbgBg0" width="1400" height="64" translation="[260, 678]" color="0x13203BFF" />
     <Label id="dbgOpt0" text="   Renovar cuenta del proveedor  (si no cargan los canales)"
-      color="0xF8FAFCFF" width="1400" height="62" vertAlign="center" translation="[260, 680]">
-      <Font role="font" uri="font:BoldSystemFontFile" size="24" />
+      color="0xF8FAFCFF" width="1400" height="64" vertAlign="center" translation="[260, 678]">
+      <Font role="font" uri="font:BoldSystemFontFile" size="26" />
     </Label>
-    <Rectangle id="dbgBg1" width="1400" height="62" translation="[260, 752]" color="0x13203BFF" />
+    <Rectangle id="dbgBg1" width="1400" height="64" translation="[260, 750]" color="0x13203BFF" />
     <Label id="dbgOpt1" text="   Empezar de cero con una cuenta nueva"
-      color="0xF8FAFCFF" width="1400" height="62" vertAlign="center" translation="[260, 752]">
-      <Font role="font" uri="font:BoldSystemFontFile" size="24" />
+      color="0xF8FAFCFF" width="1400" height="64" vertAlign="center" translation="[260, 750]">
+      <Font role="font" uri="font:BoldSystemFontFile" size="26" />
     </Label>
-    <Rectangle id="dbgBg2" width="1400" height="62" translation="[260, 824]" color="0x13203BFF" />
+    <Rectangle id="dbgBg2" width="1400" height="64" translation="[260, 822]" color="0x13203BFF" />
     <Label id="dbgOpt2" text="   Volver"
-      color="0xF8FAFCFF" width="1400" height="62" vertAlign="center" translation="[260, 824]">
-      <Font role="font" uri="font:BoldSystemFontFile" size="24" />
+      color="0xF8FAFCFF" width="1400" height="64" vertAlign="center" translation="[260, 822]">
+      <Font role="font" uri="font:BoldSystemFontFile" size="26" />
     </Label>
     <Label id="dbgNote" text="" color="0xFFC83DFF" translation="[260, 908]" width="1400">
-      <Font role="font" uri="font:SystemFontFile" size="22" />
+      <Font role="font" uri="font:SystemFontFile" size="24" />
     </Label>
     <Label text="Arriba/Abajo elegir   &#x00B7;   OK confirmar   &#x00B7;   Atr&#x00E1;s salir"
       color="0x64748BFF" translation="[260, 970]">
-      <Font role="font" uri="font:BoldSystemFontFile" size="18" />
+      <Font role="font" uri="font:BoldSystemFontFile" size="20" />
     </Label>
   </children>
 </component>

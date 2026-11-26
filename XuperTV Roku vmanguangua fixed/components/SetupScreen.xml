@@ -22,7 +22,7 @@
         width="760"
         height="84"
         translation="[624, 944]">
-        <Font role="font" uri="font:MediumBoldSystemFont" size="26" />
+        <Font role="font" uri="font:MediumBoldSystemFont" size="28" />
       </Label>
     </Group>
   </children>

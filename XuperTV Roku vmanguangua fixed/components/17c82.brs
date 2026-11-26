@@ -116,6 +116,7 @@ sub init()
     m.player.ObserveField("state", "OnPlayerState")
     m.player.ObserveField("detectedVideoCodec", "OnDetectedVideoCodec")
     m.player.ObserveField("detectedAudioFormat", "OnDetectedAudioFormat")
+    m.player.ObserveField("menuAction", "OnPlayerMenuAction")
     m.closingPlayer = false
     m.liveFullscreen = false
     m.fullPanelMode = ""
@@ -1544,8 +1545,8 @@ sub MakeLiveBrowser()
     divider.color = "0x1B345EFF"
 
     livePill = preview.CreateChild("Rectangle")
-    livePill.width = 98
-    livePill.height = 26
+    livePill.width = 112
+    livePill.height = 28
     livePill.translation = [28, 608]
     livePill.color = Tern(isSelectedPlaying, THEME_LIVE(), "0x182A4AFF")
     livePillLbl = preview.CreateChild("Label")
@@ -1553,8 +1554,8 @@ sub MakeLiveBrowser()
     livePillLbl.font = ThemeFont(12, true)
     livePillLbl.color = "0xFFFFFFFF"
     livePillLbl.translation = [28, 608]
-    livePillLbl.width = 98
-    livePillLbl.height = 26
+    livePillLbl.width = 112
+    livePillLbl.height = 28
     livePillLbl.horizAlign = "center"
     livePillLbl.vertAlign = "center"
 
@@ -1568,29 +1569,29 @@ sub MakeLiveBrowser()
     catTag.text = catTagTxt
     catTag.font = ThemeFont(14, true)
     catTag.color = THEME_ACCENT_LT()
-    catTag.translation = [140, 608]
-    catTag.width = 680
-    catTag.height = 26
+    catTag.translation = [152, 608]
+    catTag.width = 660
+    catTag.height = 28
     catTag.vertAlign = "center"
 
     if isFav
         favPillBg = preview.CreateChild("Rectangle")
-        favPillBg.width = 168
-        favPillBg.height = 26
-        favPillBg.translation = [848, 608]
+        favPillBg.width = 190
+        favPillBg.height = 28
+        favPillBg.translation = [826, 608]
         favPillBg.color = "0x382B0FFF"
         favPillIc = preview.CreateChild("Poster")
         favPillIc.uri = "pkg:/images/ui/star_gold.png"
         favPillIc.width = 16 : favPillIc.height = 16
-        favPillIc.translation = [858, 613]
+        favPillIc.translation = [836, 614]
         favPillIc.loadDisplayMode = "scaleToFit"
         favPillLbl = preview.CreateChild("Label")
         favPillLbl.text = "EN FAVORITOS"
         favPillLbl.font = ThemeFont(12, true)
         favPillLbl.color = THEME_GOLD()
-        favPillLbl.translation = [880, 608]
-        favPillLbl.width = 130
-        favPillLbl.height = 26
+        favPillLbl.translation = [858, 608]
+        favPillLbl.width = 152
+        favPillLbl.height = 28
         favPillLbl.vertAlign = "center"
     end if
 
@@ -1615,11 +1616,11 @@ sub MakeLiveBrowser()
         Tern(isSelectedPlaying, "pkg:/images/ui/fullscreen.png", "pkg:/images/ui/play.png"),
         Tern(isFav, "pkg:/images/ui/star_gold.png", "pkg:/images/ui/star_outline.png")
     ]
-    btnWidths = [320, 310]
+    btnWidths = [332, 320]
     if btnCount = 3
         btnTexts.Push("Categorías")
         btnIcons.Push("pkg:/images/ui/categories.png")
-        btnWidths.Push(240)
+        btnWidths.Push(248)
     end if
 
     bx = 28
@@ -2101,14 +2102,14 @@ sub MakeTileGrid(isPoster as Boolean)
         if isPoster
             codecBg = tile.CreateChild("Poster")
             codecBg.uri = "pkg:/images/ui/badge_pill.9.png"
-            codecBg.width = 114
-            codecBg.height = 24
-            codecBg.translation = [TILE_W() - 122, 10]
+            codecBg.width = 128
+            codecBg.height = 26
+            codecBg.translation = [TILE_W() - 136, 10]
             codecLbl = tile.CreateChild("Label")
             codecLbl.font = ThemeFont(12, true)
-            codecLbl.translation = [TILE_W() - 122, 10]
-            codecLbl.width = 114
-            codecLbl.height = 24
+            codecLbl.translation = [TILE_W() - 136, 10]
+            codecLbl.width = 128
+            codecLbl.height = 26
             codecLbl.horizAlign = "center"
             codecLbl.vertAlign = "center"
             ApplyTileCodecBadge(codecBg, codecLbl, VodCodecForItem(it))
@@ -2116,8 +2117,8 @@ sub MakeTileGrid(isPoster as Boolean)
         if not isPoster
             liveBg = tile.CreateChild("Poster")
             liveBg.uri = "pkg:/images/ui/badge_pill.9.png"
-            liveBg.width = 64
-            liveBg.height = 20
+            liveBg.width = 76
+            liveBg.height = 24
             liveBg.translation = [10, 10]
             liveBg.blendColor = THEME_LIVE()
             liveLbl = tile.CreateChild("Label")
@@ -2125,24 +2126,24 @@ sub MakeTileGrid(isPoster as Boolean)
             liveLbl.font = ThemeFont(10, true)
             liveLbl.color = "0xFFFFFFFF"
             liveLbl.translation = [10, 10]
-            liveLbl.width = 64
-            liveLbl.height = 20
+            liveLbl.width = 76
+            liveLbl.height = 24
             liveLbl.horizAlign = "center"
             liveLbl.vertAlign  = "center"
             if IsLocked(it)
                 lockBg = tile.CreateChild("Poster")
                 lockBg.uri = "pkg:/images/ui/badge_pill.9.png"
-                lockBg.width = 32
-                lockBg.height = 20
-                lockBg.translation = [TILE_W() - 42, 10]
+                lockBg.width = 40
+                lockBg.height = 24
+                lockBg.translation = [TILE_W() - 50, 10]
                 lockBg.blendColor = "0x08090CCC"
                 lockLbl = tile.CreateChild("Label")
                 lockLbl.text = "+18"
                 lockLbl.font = ThemeFont(10, true)
                 lockLbl.color = THEME_GOLD()
-                lockLbl.translation = [TILE_W() - 42, 10]
-                lockLbl.width = 32
-                lockLbl.height = 20
+                lockLbl.translation = [TILE_W() - 50, 10]
+                lockLbl.width = 40
+                lockLbl.height = 24
                 lockLbl.horizAlign = "center"
                 lockLbl.vertAlign  = "center"
             end if
@@ -4213,12 +4214,17 @@ sub ExitLiveFullscreen()
     m.top.SetFocus(true)
 end sub
 function HandleFullLiveKey(key as String) as Boolean
+    if m.player.menuOpen = true
+        return m.player.CallFunc("HandleMenuKey", key)
+    end if
     if m.fullPanelMode = ""
         if key = "up"
             RequestFullLiveChannel(m.gridIdx - 1)
         else if key = "down"
             RequestFullLiveChannel(m.gridIdx + 1)
-        else if key = "OK" or key = "left"
+        else if key = "OK"
+            m.player.CallFunc("OpenPlayerMenu", "live")
+        else if key = "left"
             OpenFullLivePanel(false)
         else if key = "right"
             OpenFullLivePanel(true)
@@ -4328,10 +4334,37 @@ function HandleFullLiveKey(key as String) as Boolean
     end if
     return true
 end function
+sub OnPlayerMenuAction(event as Object)
+    act = SafeStr(event.GetData())
+    if act = "openGuide"
+        if IsLiveSection(m.NAV[m.navIdx].id) and m.liveFullscreen
+            OpenFullLivePanel(false)
+        end if
+    else if act = "toggleFav"
+        if m.gridIdx >= 0 and m.gridIdx < m.items.Count()
+            cur = m.items[m.gridIdx]
+            if not IsLocked(cur) and not (m.catIdx >= 0 and m.catIdx < m.categories.Count() and IsCatAdult(m.categories[m.catIdx]))
+                added = ToggleFavItem(cur)
+                m.player.isFavorite = added
+                ShowFavToast(Tern(added, "Agregado a Favoritos: " + SafeStr(cur.name), "Quitado de Favoritos: " + SafeStr(cur.name)))
+            end if
+        end if
+    else if act = "exitPlayer"
+        if IsLiveSection(m.NAV[m.navIdx].id) and m.liveFullscreen
+            ExitLiveFullscreen()
+            RenderRail() : RenderHeader() : RenderGrid()
+        else
+            ClosePlayer()
+        end if
+    end if
+end sub
 function HandleRemoteKey(key as String) as Boolean
     if key = "back"
     end if
     if m.player.visible
+        if m.player.menuOpen = true
+            return m.player.CallFunc("HandleMenuKey", key)
+        end if
         navId = m.NAV[m.navIdx].id
         isVod = IsVodSection(navId) or navId = "search"
         if navId = "history" and m.gridIdx >= 0 and m.gridIdx < m.items.Count()
@@ -4345,7 +4378,9 @@ function HandleRemoteKey(key as String) as Boolean
             keepNavigating = true
         else if key = "back"
             ClosePlayer()
-        else if isVod and (key = "OK" or key = "play")
+        else if isVod and (key = "OK" or key = "options")
+            m.player.CallFunc("OpenPlayerMenu", "vod")
+        else if isVod and key = "play"
             m.player.transport = "playpause"
         else if isVod and key = "right"
             m.player.transport = "seekfwd"
@@ -4357,7 +4392,9 @@ function HandleRemoteKey(key as String) as Boolean
             m.player.transport = "subearlier"
         else if isVod and key = "fastforward"
             m.player.transport = "sublater"
-        else if key = "OK" or key = "play"
+        else if key = "OK"
+            m.player.CallFunc("OpenPlayerMenu", "live")
+        else if key = "play"
             m.player.poke = true
         end if
         if not embeddedLive then return true

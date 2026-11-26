@@ -27,6 +27,11 @@
     <field id="lastErrorMessage" type="string" />
     <field id="lastErrorDetail" type="string" />
     <field id="vodPlaybackState" type="string" />
+    <field id="menuOpen"         type="boolean" value="false" />
+    <field id="menuAction"       type="string" alwaysNotify="true" />
+    <function name="OpenPlayerMenu" />
+    <function name="ClosePlayerMenu" />
+    <function name="HandleMenuKey" />
   </interface>
   <script type="text/brightscript" uri="pkg:/source/d29a3.brs" />
   <script type="text/brightscript" uri="pkg:/source/b540f.brs" />
@@ -38,65 +43,96 @@
   <script type="text/brightscript" uri="pkg:/components/5ac93.brs" />
   <children>
     <Rectangle id="playerBg" width="1920" height="1080" color="0x000000FF" />
-    <Video id="video" width="1920" height="1080" enableUI="false" enableTrickPlay="false" />
+    <Group id="videoFrame" clippingRect="[0, 0, 1920, 1080]">
+      <Video id="video" width="1920" height="1080" enableUI="false" enableTrickPlay="false" />
+    </Group>
     <Group id="liveOsd" visible="false">
-      <Rectangle width="1792" height="124" translation="[64,910]" color="0x060C1BEB" />
-      <Rectangle width="1792" height="2" translation="[64,910]" color="0x1C3664FF" />
-      <Rectangle width="6" height="124" translation="[64,910]" color="0x0EA5E9FF" />
-      <Rectangle width="88" height="88" translation="[90,928]" color="0x0D162BFF" />
-      <Poster id="liveOsdLogo" width="82" height="82" translation="[93,931]" loadDisplayMode="scaleToFit" />
-      <Rectangle width="88" height="24" translation="[198,929]" color="0xFF2E4CFF" />
-      <Label text="EN VIVO" translation="[198,932]" width="88" height="22"
-        horizAlign="center" font="font:SmallBoldSystemFont" color="0xFFFFFFFF" />
-      <Group id="liveOsdFavGroup" translation="[298,929]" visible="false">
-        <Rectangle width="136" height="24" color="0x382B0FFF" />
-        <Poster uri="pkg:/images/ui/star_gold.png" width="18" height="18" translation="[8,3]" loadDisplayMode="scaleToFit" />
-        <Label text="FAVORITO" translation="[30,2]" width="98" height="22"
-          font="font:SmallBoldSystemFont" color="0xFFC83DFF" />
+      <Rectangle width="1792" height="130" translation="[64,904]" color="0x060C1BEB" />
+      <Rectangle width="1792" height="2" translation="[64,904]" color="0x1C3664FF" />
+      <Rectangle width="6" height="130" translation="[64,904]" color="0x0EA5E9FF" />
+      <Rectangle width="88" height="88" translation="[90,925]" color="0x0D162BFF" />
+      <Poster id="liveOsdLogo" width="82" height="82" translation="[93,928]" loadDisplayMode="scaleToFit" />
+      <Rectangle width="96" height="28" translation="[198,923]" color="0xFF2E4CFF" />
+      <Label text="EN VIVO" translation="[198,923]" width="96" height="28"
+        horizAlign="center" vertAlign="center" color="0xFFFFFFFF">
+        <Font role="font" uri="font:BoldSystemFontFile" size="16" />
+      </Label>
+      <Group id="liveOsdFavGroup" translation="[306,923]" visible="false">
+        <Rectangle width="146" height="28" color="0x382B0FFF" />
+        <Poster uri="pkg:/images/ui/star_gold.png" width="18" height="18" translation="[8,5]" loadDisplayMode="scaleToFit" />
+        <Label text="FAVORITO" translation="[32,0]" width="108" height="28" vertAlign="center" color="0xFFC83DFF">
+          <Font role="font" uri="font:BoldSystemFontFile" size="16" />
+        </Label>
       </Group>
-      <Label id="liveOsdCategory" translation="[298,929]" width="560" height="28"
-        font="font:SmallSystemFont" color="0x94A3B8FF" />
-      <Label id="liveOsdTitle" translation="[198,964]" width="810" height="44"
-        font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
-      <Rectangle width="2" height="68" translation="[1024,938]" color="0x1E3258FF" />
-      <Label text="&#x2191;&#x2193; Canal   &#x00B7;   OK Lista   &#x00B7;   &#x25B6; Favorito   &#x00B7;   Atr&#x00E1;s Salir"
-        translation="[1044,954]" width="788" height="42" horizAlign="right"
-        font="font:MediumSystemFont" color="0xE2E8F0FF" />
+      <Label id="liveOsdCategory" translation="[306,923]" width="560" height="28" vertAlign="center" color="0x94A3B8FF">
+        <Font role="font" uri="font:SystemFontFile" size="21" />
+      </Label>
+      <Label id="liveOsdTitle" translation="[198,960]" width="790" height="50" vertAlign="center" ellipsisText="..." color="0xFFFFFFFF">
+        <Font role="font" uri="font:BoldSystemFontFile" size="34" />
+      </Label>
+      <Rectangle width="2" height="74" translation="[1000,932]" color="0x1E3258FF" />
+      <Label text="&#x2191;&#x2193; Canal  &#x00B7;  &#x25C0; Lista  &#x00B7;  OK Men&#x00FA;  &#x00B7;  Atr&#x00E1;s Salir"
+        translation="[1018,948]" width="816" height="44" horizAlign="right" vertAlign="center" color="0xE2E8F0FF">
+        <Font role="font" uri="font:BoldSystemFontFile" size="22" />
+      </Label>
     </Group>
     <Group id="liveStatus" visible="false">
-      <Rectangle width="840" height="58" translation="[540,824]" color="0x060C1BF2" />
-      <Rectangle width="5" height="58" translation="[540,824]" color="0x0EA5E9FF" />
-      <Label id="liveStatusLabel" translation="[564,824]" width="792" height="58"
-        horizAlign="center" vertAlign="center" font="font:MediumBoldSystemFont" color="0xFFFFFFFF" />
+      <Rectangle width="920" height="64" translation="[500,816]" color="0x060C1BF2" />
+      <Rectangle width="5" height="64" translation="[500,816]" color="0x0EA5E9FF" />
+      <Label id="liveStatusLabel" translation="[524,816]" width="872" height="64"
+        horizAlign="center" vertAlign="center" color="0xFFFFFFFF">
+        <Font role="font" uri="font:BoldSystemFontFile" size="24" />
+      </Label>
     </Group>
     <Group id="osd" visible="false">
-      <Rectangle color="0x040814E0" width="1920" height="200" translation="[0,0]" />
-      <Rectangle id="osdLogoBg" width="78" height="78" translation="[68,50]" color="0x0D1528FF" />
-      <Poster id="osdLogo" width="78" height="78" translation="[68,50]" loadDisplayMode="scaleToFit" />
-      <Rectangle id="liveBadge" width="90" height="26" translation="[166,52]" color="0xFF2E4CFF" />
-      <Label id="liveBadgeLbl" text="EN VIVO" font="font:SmallBoldSystemFont" color="0xFFFFFFFF"
-        translation="[166,56]" width="90" horizAlign="center" />
-      <Label id="osdCategory" text="" font="font:SmallBoldSystemFont" color="0x56CCF2FF" translation="[266,54]" />
-      <Label id="osdTitle" text="" translation="[166,80]" font="font:LargeBoldSystemFont" color="0xFFFFFFFF" />
-      <Label id="osdProgram" text="En transmision ahora" translation="[166,132]" font="font:MediumSystemFont" color="0x94A3B8FF" />
-      <Label id="osdClock" text="" translation="[1700,50]" font="font:LargeBoldSystemFont" color="0xF8FAFCFF" width="150" horizAlign="right" />
-      <Label id="osdChNumber" text="" translation="[1700,96]" font="font:SmallBoldSystemFont" color="0x64748BFF" width="150" horizAlign="right" />
-      <Rectangle color="0x040814E0" width="1920" height="130" translation="[0,950]" />
-      <Rectangle id="progressBg" width="1500" height="5" translation="[280,1005]" color="0xFFFFFF2E" />
-      <Rectangle id="progressFill" width="1500" height="5" translation="[280,1005]" color="0x0EA5E9FF" />
-      <Rectangle id="directoBadge" width="110" height="34" translation="[1810,988]" color="0x0EA5E933" />
-      <Label id="directoLbl" text="DIRECTO" font="font:SmallBoldSystemFont" color="0xFFFFFFFF" translation="[1810,998]" width="110" horizAlign="center" />
-      <Label id="backHint" text="Back para salir" font="font:SmallSystemFont" color="0x94A3B8FF" translation="[64,998]" />
-      <Label id="avInfo" text="" font="font:SmallBoldSystemFont" color="0x56CCF2FF" translation="[64,960]" visible="false" />
+      <Rectangle color="0x040814E0" width="1920" height="206" translation="[0,0]" />
+      <Rectangle id="osdLogoBg" width="84" height="84" translation="[68,48]" color="0x0D1528FF" />
+      <Poster id="osdLogo" width="84" height="84" translation="[68,48]" loadDisplayMode="scaleToFit" />
+      <Rectangle id="liveBadge" width="98" height="28" translation="[170,50]" color="0xFF2E4CFF" />
+      <Label id="liveBadgeLbl" text="EN VIVO" color="0xFFFFFFFF"
+        translation="[170,50]" width="98" height="28" horizAlign="center" vertAlign="center">
+        <Font role="font" uri="font:BoldSystemFontFile" size="16" />
+      </Label>
+      <Label id="osdCategory" text="" color="0x56CCF2FF" translation="[280,50]" height="28" vertAlign="center">
+        <Font role="font" uri="font:BoldSystemFontFile" size="20" />
+      </Label>
+      <Label id="osdTitle" text="" translation="[170,82]" width="1480" height="48" ellipsisText="..." color="0xFFFFFFFF">
+        <Font role="font" uri="font:BoldSystemFontFile" size="36" />
+      </Label>
+      <Label id="osdProgram" text="En transmision ahora" translation="[170,136]" color="0xCBD5E1FF">
+        <Font role="font" uri="font:SystemFontFile" size="23" />
+      </Label>
+      <Label id="osdClock" text="" translation="[1690,48]" color="0xF8FAFCFF" width="160" horizAlign="right">
+        <Font role="font" uri="font:BoldSystemFontFile" size="34" />
+      </Label>
+      <Label id="osdChNumber" text="" translation="[1690,98]" color="0x94A3B8FF" width="160" horizAlign="right">
+        <Font role="font" uri="font:BoldSystemFontFile" size="20" />
+      </Label>
+      <Rectangle color="0x040814E0" width="1920" height="136" translation="[0,944]" />
+      <Rectangle id="progressBg" width="1500" height="6" translation="[280,992]" color="0xFFFFFF2E" />
+      <Rectangle id="progressFill" width="1500" height="6" translation="[280,992]" color="0x0EA5E9FF" />
+      <Rectangle id="directoBadge" width="118" height="36" translation="[1798,976]" color="0x0EA5E933" />
+      <Label id="directoLbl" text="DIRECTO" color="0xFFFFFFFF" translation="[1798,976]" width="118" height="36" horizAlign="center" vertAlign="center">
+        <Font role="font" uri="font:BoldSystemFontFile" size="17" />
+      </Label>
+      <Label id="backHint" text="OK Men&#x00FA;   &#x00B7;   Atr&#x00E1;s salir" color="0xCBD5E1FF" translation="[64,1012]" width="1792">
+        <Font role="font" uri="font:SystemFontFile" size="21" />
+      </Label>
+      <Label id="avInfo" text="" color="0x56CCF2FF" translation="[64,956]" visible="false">
+        <Font role="font" uri="font:BoldSystemFontFile" size="22" />
+      </Label>
     </Group>
     <Group id="subGroup" visible="false">
-      <Label id="subShadow" translation="[162,832]" width="1596" height="140"
-        horizAlign="center" vertAlign="bottom" wrap="true" color="0x000000E6"
-        font="font:LargeBoldSystemFont" />
-      <Label id="subLabel"  translation="[160,830]" width="1600" height="140"
-        horizAlign="center" vertAlign="bottom" wrap="true" color="0xFFFFFFFF"
-        font="font:LargeBoldSystemFont" />
+      <Label id="subShadow" translation="[142,812]" width="1636" height="156"
+        horizAlign="center" vertAlign="bottom" wrap="true" color="0x000000E6">
+        <Font role="font" uri="font:BoldSystemFontFile" size="46" />
+      </Label>
+      <Label id="subLabel" translation="[140,810]" width="1640" height="156"
+        horizAlign="center" vertAlign="bottom" wrap="true" color="0xFFFFFFFF">
+        <Font role="font" uri="font:BoldSystemFontFile" size="46" />
+      </Label>
     </Group>
+    <Group id="playerMenu" visible="false" />
     <BusySpinner id="spinner"
       translation="[920, 490]"
       visible="true" />
