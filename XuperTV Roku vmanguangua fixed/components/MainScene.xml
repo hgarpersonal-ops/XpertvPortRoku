@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="MainScene" extends="Scene">
+  <interface>
+    <field id="sessionStale" type="boolean" alwaysNotify="true" />
+    <field id="showDebug" type="boolean" alwaysNotify="true" />
+    <field id="showSettings" type="boolean" alwaysNotify="true" />
+    <field id="otaInfo" type="string" value="" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/d29a3.brs" />
+  <script type="text/brightscript" uri="pkg:/source/e4b72.brs" />
+  <script type="text/brightscript" uri="pkg:/source/a7f19.brs" />
+  <script type="text/brightscript" uri="pkg:/source/72ab4.brs" />
+  <script type="text/brightscript" uri="pkg:/source/8ce21.brs" />
+  <script type="text/brightscript" uri="pkg:/source/64be0.brs" />
+  <script type="text/brightscript" uri="pkg:/components/29bd4.brs" />
+  <children>
+    <Rectangle id="background" width="1920" height="1080" color="0x040814FF" />
+    <SetupScreen    id="setupScreen"    visible="true" />
+    <HomeScreen     id="homeScreen"     visible="false" />
+    <DebugScreen    id="debugScreen"    visible="false" />
+    <SettingsScreen id="settingsScreen" visible="false" />
+    <Audio          id="introAudio" />
+  </children>
+</component>

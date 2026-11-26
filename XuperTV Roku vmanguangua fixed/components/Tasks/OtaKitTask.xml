@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="OtaKitTask" extends="Task">
+  <interface>
+    <field id="forceRenew"  type="boolean" value="false" />
+    <field id="kitUpdated"  type="boolean" value="false" alwaysNotify="true" />
+    <field id="needsRenew"  type="boolean" value="false" alwaysNotify="true" />
+    <field id="remoteBuild" type="integer" value="0" alwaysNotify="true" />
+    <field id="kitVer"      type="integer" value="0" />
+    <field id="status"      type="string"  value="" alwaysNotify="true" />
+    <field id="done"        type="boolean" value="false" alwaysNotify="true" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/source/d29a3.brs" />
+  <script type="text/brightscript" uri="pkg:/source/e4b72.brs" />
+  <script type="text/brightscript" uri="pkg:/source/a7f19.brs" />
+  <script type="text/brightscript" uri="pkg:/source/72ab4.brs" />
+  <script type="text/brightscript" uri="pkg:/source/8ce21.brs" />
+  <script type="text/brightscript" uri="pkg:/components/Tasks/OtaKitTask.brs" />
+</component>
