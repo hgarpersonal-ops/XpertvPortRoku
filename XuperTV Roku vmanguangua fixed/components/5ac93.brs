@@ -73,6 +73,8 @@ sub init()
     m.vodIgnoreTerminal = false
     m.pendingVodSeek = 0
     m.preserveSubsOnPlay = false
+    m.autoAudioPicked = false
+    m.manualAudioSet = false
     m.menuOpen = false
     m.menuMode = "vod"
     m.menuCursor = 0
@@ -87,6 +89,7 @@ sub init()
     m.video.ObserveField("position", "OnPosition")
     m.video.ObserveField("videoFormat", "OnVideoFormat")
     m.video.ObserveField("audioFormat", "OnAudioFormat")
+    m.video.ObserveField("availableAudioTracks", "OnAvailableAudioTracks")
     m.top.ObserveField("channelCode",  "OnChannelCodeSet")
     m.top.ObserveField("vodContentId", "OnVodContentSet")
     m.top.ObserveField("vodUrl",       "OnVodUrlSet")
@@ -214,6 +217,8 @@ sub OnVodContentSet(event as Object)
     m.osdMode = "vod"
     m.pendingVodSeek = 0
     m.preserveSubsOnPlay = false
+    m.autoAudioPicked = false
+    m.manualAudioSet = false
     m.nativeSubTrack = ""
     m.top.detectedVideoCodec = ""
     m.liveOsd.visible = false
@@ -489,17 +494,28 @@ function VodCollectCdns(slbData as Object) as Object
     end for
     return out
 end function
+function AudioTokenPenalty(tok as String) as Integer
+    t = LCase(tok).Trim()
+    if t = "" then return 1000
+    if Instr(1, t, "latino") > 0 or Instr(1, t, "latam") > 0 or Instr(1, t, "419") > 0 or Instr(1, t, "america") > 0 then return 0
+    if Instr(1, t, "castellano") > 0 or Instr(1, t, "espana") > 0 or Instr(1, t, "españa") > 0 or Instr(1, t, "es-es") > 0 then return 200
+    if t = "es" or t = "spa" or t = "esp" or Instr(1, t, "espa") > 0 or Instr(1, t, "spanish") > 0 or Instr(1, t, "espanol") > 0 then return 50
+    if t = "en" or t = "eng" or Instr(1, t, "english") > 0 or Instr(1, t, "ingles") > 0 or Instr(1, t, "inglés") > 0 then return 800
+    if t = "pt" or t = "por" or Instr(1, t, "portug") > 0 or Instr(1, t, "brasil") > 0 or Instr(1, t, "brazil") > 0 then return 3000
+    return 1000
+end function
 function VodAudioPenalty(audioText as String) as Integer
-    a = LCase(audioText)
+    a = LCase(audioText).Trim()
     if a = "" then return 0
-    if Instr(1, a, "latino") > 0 or Instr(1, a, "latam") > 0 or Instr(1, a, "419") > 0 or Instr(1, a, "america") > 0 then return 0
-    if Instr(1, a, "es") = 1 or Instr(1, a, "spa") = 1 or Instr(1, a, "espa") > 0 or Instr(1, a, "spanish") > 0
-        if Instr(1, a, "castellano") > 0 or Instr(1, a, "espana") > 0 or Instr(1, a, "españa") > 0 then return 400
-        return 50
-    end if
-    if Instr(1, a, "en") = 1 or Instr(1, a, "english") > 0 or Instr(1, a, "ingles") > 0 or Instr(1, a, "inglés") > 0 then return 250
-    if Instr(1, a, "pt") = 1 or Instr(1, a, "por") = 1 or Instr(1, a, "portug") > 0 or Instr(1, a, "brasil") > 0 then return 1500
-    return 300
+    norm = a.Replace("/", ",").Replace("|", ",").Replace(";", ",")
+    tokens = norm.Split(",")
+    best = 9999
+    for each tk in tokens
+        p = AudioTokenPenalty(tk)
+        if p < best then best = p
+    end for
+    if best = 9999 then return AudioTokenPenalty(a)
+    return best
 end function
 function VodVariantScore(v as Object, hw as Object, containerPenalty as Integer) as Integer
     score = containerPenalty
@@ -507,12 +523,23 @@ function VodVariantScore(v as Object, hw as Object, containerPenalty as Integer)
     rawEnc = SafeStr(v.rawEncode)
     supported = Hardware_CodecSupported(hw, codecName)
     hevcOk = (hw <> invalid and hw.hevc = true)
+    bridgeReady = (PcBridge_LoadHost() <> "")
     if supported = false
-        score = score + 20000
+        if (Instr(1, codecName, "HEVC") > 0 or Instr(1, codecName, "H.265") > 0) and bridgeReady
+            score = score + 300
+        else
+            score = score + 20000
+        end if
     else if Instr(1, codecName, "H.264") > 0 or Instr(1, codecName, "AVC") > 0
         score = score + 0
     else if Instr(1, codecName, "HEVC") > 0 or Instr(1, codecName, "H.265") > 0
-        score = score + Tern(hevcOk, 80, 20000)
+        if hevcOk
+            score = score + 80
+        else if bridgeReady
+            score = score + 300
+        else
+            score = score + 20000
+        end if
     else
         score = score + 160
     end if
@@ -615,7 +642,8 @@ sub TryStartVod()
     m.vodUrlIdx = 0
     m.bestBridgeVariant = playable[0]
     hevcOk = (m.hardwareInfo <> invalid and m.hardwareInfo.hevc = true)
-    if not hevcOk and playable[0].score >= 20000 and PcBridge_LoadHost() <> ""
+    bestSupported = Hardware_CodecSupported(m.hardwareInfo, SafeStr(playable[0].codec))
+    if not hevcOk and (playable[0].score >= 20000 or not bestSupported) and PcBridge_LoadHost() <> ""
         print "[XuperBridge] Sin pista H.264 nativa; usando Puente PC"
         TryStartVodViaBridge(playable[0])
         return
@@ -636,6 +664,11 @@ sub TryStartVodViaBridge(variant as Object)
     SetVodPlaybackState("PLAYBACK_LOADING")
     FlashAV("Conectando con Puente PC (" + host + ")...")
     if m.bridgeTask <> invalid then m.bridgeTask.control = "STOP"
+    seekStart = 0
+    if m.pendingVodSeek <> invalid and m.pendingVodSeek > 0
+        seekStart = m.pendingVodSeek
+        m.pendingVodSeek = 0
+    end if
     t = CreateObject("roSGNode", "BridgeTask")
     t.generation = m.vodGen
     t.action = "session"
@@ -645,7 +678,8 @@ sub TryStartVodViaBridge(variant as Object)
         headerList: variant.urlHeaders,
         headers: variant.headers,
         title: SafeStr(m.top.channelName),
-        startSec: 0
+        audioInfo: SafeStr(variant.audioInfo),
+        startSec: seekStart
     }
     t.ObserveField("result", "OnBridgeSessionResult")
     m.bridgeTask = t
@@ -777,14 +811,35 @@ sub OnVodFallbackTimer(event as Object)
     m.vodFallbackTimer = invalid
     PlayVodUrl()
 end sub
-function LangName(code as String) as String
-    c = LCase(code)
-    if c = "es" or c = "spa" then return "Español"
-    if c = "en" or c = "eng" then return "English"
-    if c = "pt" or c = "por" then return "Português"
-    if c = "fr" or c = "fra" then return "Français"
+function SingleLangName(code as String) as String
+    c = LCase(code).Trim()
+    if Instr(1, c, "latino") > 0 or Instr(1, c, "latam") > 0 or c = "419" then return "Español Latino"
+    if Instr(1, c, "castellano") > 0 then return "Español (Cast.)"
+    if c = "es" or c = "spa" or c = "esp" or Instr(1, c, "espa") > 0 or Instr(1, c, "spanish") > 0 then return "Español"
+    if c = "en" or c = "eng" or Instr(1, c, "english") > 0 then return "English"
+    if c = "pt" or c = "por" or Instr(1, c, "portug") > 0 or Instr(1, c, "brasil") > 0 then return "Português"
+    if c = "fr" or c = "fra" or c = "fre" then return "Français"
+    if c = "ja" or c = "jpn" then return "Japonés"
     if c = "" then return "Idioma"
-    return UCase(code)
+    return UCase(c)
+end function
+function LangName(code as String) as String
+    s = SafeStr(code).Trim()
+    if s = "" then return "Idioma"
+    if Instr(1, s, ",") = 0 then return SingleLangName(s)
+    parts = s.Split(",")
+    out = ""
+    seen = {}
+    for each p in parts
+        lbl = SingleLangName(p)
+        if lbl <> "" and seen[lbl] = invalid
+            seen[lbl] = true
+            if out <> "" then out = out + " · "
+            out = out + lbl
+        end if
+    end for
+    if out = "" then return UCase(s)
+    return out
 end function
 sub OnChannelCodeSet(event as Object)
     channelCode = event.GetData()
@@ -792,6 +847,8 @@ sub OnChannelCodeSet(event as Object)
     ClosePlayerMenu()
     m.pendingVodSeek = 0
     m.preserveSubsOnPlay = false
+    m.autoAudioPicked = false
+    m.manualAudioSet = false
     m.nativeSubTrack = ""
     m.liveGen = m.top.requestGeneration
     m.vodGen = m.vodGen + 1
@@ -1180,7 +1237,10 @@ end function
 sub OnVodUrlSet(event as Object)
     url = event.GetData()
     if url = "" or url = invalid then return
+    ClosePlayerMenu()
     m.vodGen = m.vodGen + 1
+    m.autoAudioPicked = false
+    m.manualAudioSet = false
     SetVodPlaybackState("PLAYBACK_LOADING")
     ClearPlaybackError()
     m.osdMode = "vod"
@@ -1221,6 +1281,7 @@ sub PlayUrl(url as String, headers = invalid as Dynamic, isLive = true as Boolea
         m.subLangIdx = -1      ' -1 = subtítulos apagados
     end if
     m.preserveSubsOnPlay = false
+    m.autoAudioPicked = false
     m.audioIdx = 0
     if not isLive and m.vodDuration > 0
         m.progressFill.width = 0
@@ -1431,6 +1492,7 @@ sub OnVideoState(event as Object)
         end if
     end if
     if state = "playing"
+        AutoSelectSpanishAudio()
         if m.osdMode = "vod" and m.pendingVodSeek <> invalid and m.pendingVodSeek > 0
             seekTarget = m.pendingVodSeek
             m.pendingVodSeek = 0
@@ -1444,6 +1506,43 @@ sub OnVideoState(event as Object)
         m.spinner.visible = false
     else if state = "buffering"
         m.spinner.visible = true
+    end if
+end sub
+sub OnAvailableAudioTracks(event as Object)
+    AutoSelectSpanishAudio()
+    if m.menuOpen then RenderPlayerMenu()
+end sub
+sub AutoSelectSpanishAudio()
+    if m.manualAudioSet = true or m.autoAudioPicked = true then return
+    if m.video = invalid then return
+    at = m.video.availableAudioTracks
+    if at = invalid or at.Count() = 0 then return
+    if at.Count() = 1
+        m.autoAudioPicked = true
+        return
+    end if
+    bestTid = ""
+    bestRank = 999
+    curTid = GetActiveAudioTrackId()
+    for each t in at
+        tid = SafeStr(t.Track)
+        if tid = "" then tid = SafeStr(t.TrackName)
+        lang = SafeStr(t.Language)
+        tName = SafeStr(t.Name)
+        r1 = AudioTokenPenalty(lang)
+        r2 = AudioTokenPenalty(tName)
+        rank = r1
+        if r2 < rank then rank = r2
+        ' Solo auto-seleccionar si la pista es español/latino/castellano (<= 200)
+        if tid <> "" and rank <= 200 and rank < bestRank
+            bestRank = rank
+            bestTid = tid
+        end if
+    end for
+    m.autoAudioPicked = true
+    if bestTid <> "" and bestTid <> curTid
+        m.video.audioTrack = bestTid
+        print "[XuperAudio] Auto-seleccionado Español track="; bestTid
     end if
 end sub
 sub OnPosition(event as Object)
@@ -1891,7 +1990,7 @@ sub SwitchVodVariantByIndex(targetIdx as Integer)
     m.spinner.visible = true
     hevcOk = (m.hardwareInfo <> invalid and m.hardwareInfo.hevc = true)
     vSel = m.vodVariants[targetIdx]
-    if not hevcOk and vSel.score >= 20000 and PcBridge_LoadHost() <> ""
+    if not hevcOk and (vSel.score >= 20000 or not Hardware_CodecSupported(m.hardwareInfo, SafeStr(vSel.codec))) and PcBridge_LoadHost() <> ""
         TryStartVodViaBridge(vSel)
     else
         if m.bridgeUsed
@@ -1906,9 +2005,11 @@ end sub
 sub ApplyAudioChoice(it as Object)
     if it = invalid then return
     if it.kind = "native" and SafeStr(it.trackId) <> ""
+        m.manualAudioSet = true
         m.video.audioTrack = SafeStr(it.trackId)
         FlashAV("Audio: " + SafeStr(it.label))
     else if it.kind = "variant" and it.varIdx <> invalid
+        m.manualAudioSet = true
         FlashAV("Cambiando audio: " + SafeStr(it.label))
         SwitchVodVariantByIndex(it.varIdx)
     else

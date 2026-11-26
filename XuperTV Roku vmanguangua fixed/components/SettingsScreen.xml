@@ -69,7 +69,7 @@
     <Label text="Arriba/Abajo elegir   &#x00B7;   OK confirmar   &#x00B7;   Atr&#x00E1;s regresar" translation="[190,965]" color="0x64748BFF">
       <Font role="font" uri="font:BoldSystemFontFile" size="20" />
     </Label>
-    <Label text="Compilaci&#x00F3;n v48 &#x00B7; Edici&#x00F3;n Manguangua (by wastrike)" translation="[830,965]" width="900" horizAlign="right" color="0x56CCF2B3">
+    <Label text="Compilaci&#x00F3;n v49 &#x00B7; Edici&#x00F3;n Manguangua (by wastrike)" translation="[830,965]" width="900" horizAlign="right" color="0x56CCF2B3">
       <Font role="font" uri="font:BoldSystemFontFile" size="20" />
     </Label>
   </children>

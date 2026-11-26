@@ -168,7 +168,7 @@
         <Label id="navLabel9" text="Ajustes" translation="[62,0]" width="180" height="54" vertAlign="center" color="0xCBD5E1FF"><Font role="font" uri="font:BoldSystemFontFile" size="24" /></Label>
       </Group>
 
-      <Label id="buildFooter" text="Compilación v48&#x0A;Edición Manguangua (by wastrike)" translation="[26,996]" width="256" height="54" color="0x64748BFF" horizAlign="left" wrap="true">
+      <Label id="buildFooter" text="Compilación v49&#x0A;Edición Manguangua (by wastrike)" translation="[26,996]" width="256" height="54" color="0x64748BFF" horizAlign="left" wrap="true">
         <Font role="font" uri="font:SystemFontFile" size="16" />
       </Label>
     </Group>
