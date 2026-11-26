@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="SetupScreen" extends="Group">
+  <interface>
+    <field id="status" type="string" alias="setupHint.text" />
+    <field id="busy" type="boolean" value="false" alias="busyGroup.visible" />
+  </interface>
+  <children>
+    <Rectangle width="1920" height="1080" color="0x040814FF" />
+    <Poster id="splashPoster"
+      uri="pkg:/images/splash_hd.jpg"
+      width="1920" height="1080"
+      loadWidth="1280" loadHeight="720"
+      loadDisplayMode="scaleToZoom" />
+    <Group id="busyGroup" visible="false">
+      <Rectangle width="900" height="84" translation="[510, 944]" color="0x050914D9" />
+      <BusySpinner id="setupSpinner" translation="[544, 962]" />
+      <Label id="setupHint"
+        text="Conectando con XuperTV..."
+        color="0xF8FAFCFF"
+        horizAlign="left"
+        vertAlign="center"
+        width="760"
+        height="84"
+        translation="[624, 944]">
+        <Font role="font" uri="font:MediumBoldSystemFont" size="26" />
+      </Label>
+    </Group>
+  </children>
+</component>
